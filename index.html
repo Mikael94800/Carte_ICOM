@@ -51,21 +51,71 @@
         th { background-color: #f2f2f2; }
         .btn-danger { background-color: #e74c3c; }
         .btn-danger:hover { background-color: #c0392b; }
+
+        /* Styles du Calendrier Mensuel */
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+        .cal-day-header {
+            text-align: center;
+            font-weight: bold;
+            background: #f2f2f2;
+            padding: 5px;
+            font-size: 12px;
+        }
+        .cal-cell {
+            min-height: 70px;
+            border: 1px solid #ddd;
+            padding: 4px;
+            background: #fff;
+            font-size: 11px;
+            vertical-align: top;
+        }
+        .cal-cell.other-month { background: #fdfdfd; color: #aaa; }
+        .day-number { font-weight: bold; margin-bottom: 3px; }
+        
+        /* Couleurs par carte */
+        .event-card-1 { background-color: #3498db; color: white; padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .event-card-2 { background-color: #e67e22; color: white; padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .event-card-3 { background-color: #9b59b6; color: white; padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        
+        .legend { display: flex; gap: 15px; margin-top: 10px; font-size: 13px; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-color { width: 15px; height: 15px; border-radius: 3px; }
     </style>
 </head>
 <body>
 
     <h2>Gestion des Emprunts de Cartes</h2>
 
+    <!-- Section Calendrier Mensuel -->
     <div class="section">
-        <h3>Disponibilité actuelle (Aujourd'hui)</h3>
-        <div class="card-status" id="cards-status-container">
-            Chargement des statuts...
+        <h3>Disponibilité et Planning des Cartes</h3>
+        <div class="calendar-header">
+            <button type="button" onclick="changeMonth(-1)">◀ Mois précédent</button>
+            <h4 id="calendar-month-title" style="margin: 0;"></h4>
+            <button type="button" onclick="changeMonth(1)">Mois suivant ▶</button>
         </div>
+        <div class="legend">
+            <div class="legend-item"><div class="legend-color" style="background: #3498db;"></div> Carte 1</div>
+            <div class="legend-item"><div class="legend-color" style="background: #e67e22;"></div> Carte 2</div>
+            <div class="legend-item"><div class="legend-color" style="background: #9b59b6;"></div> Carte 3</div>
+        </div>
+        <div id="calendar-container" style="margin-top: 10px;"></div>
     </div>
 
+    <!-- Formulaire de réservation -->
     <form id="reservation-form">
         <h3>Faire une demande d'emprunt</h3>
+
         <label for="carte">Carte :</label>
         <select id="carte" required>
             <option value="1">Carte 1</option>
@@ -83,6 +133,7 @@
         <p id="form-msg" style="margin-top: 10px; font-weight: bold;"></p>
     </form>
 
+    <!-- Mes réservations -->
     <div class="section">
         <h3>Mes réservations en cours</h3>
         <table>
@@ -104,135 +155,11 @@
     <script>
         let allEmprunts = [];
         let currentUserEmail = "";
+        let currentCalendarDate = new Date();
 
         grist.ready({
-            requiredAccess: 'full'
+            requiredAccess: 'full',
+            requiredTableAccess: ['EMPRUNT', 'UTILISATEURS']
         });
 
-        // Récupération automatique des enregistrements de la table liée à la page
-        grist.onRecords(function(records) {
-            allEmprunts = records || [];
-            updateUI();
-        });
-
-        grist.onUser(function(user) {
-            if (user && user.email) {
-                currentUserEmail = user.email;
-                updateUI();
-            }
-        });
-
-        function updateUI() {
-            renderStatus();
-            renderMyBookings();
-        }
-
-        function datesOverlap(start1, end1, start2, end2) {
-            return start1 <= end2 && end1 >= start2;
-        }
-
-        function renderStatus() {
-            const container = document.getElementById('cards-status-container');
-            container.innerHTML = '';
-            const today = new Date().toISOString().split('T')[0];
-
-            for (let i = 1; i <= 3; i++) {
-                const isBusy = allEmprunts.some(emp => {
-                    return String(emp.Carte) === String(i) && emp.DateDebut <= today && emp.DateFin >= today;
-                });
-
-                const badge = document.createElement('div');
-                badge.className = `card-badge ${isBusy ? 'busy' : 'available'}`;
-                badge.innerText = `Carte ${i} : ${isBusy ? 'Occupée' : 'Disponible'}`;
-                container.appendChild(badge);
-            }
-        }
-
-        function renderMyBookings() {
-            const tbody = document.getElementById('my-bookings');
-            tbody.innerHTML = '';
-
-            if (!currentUserEmail) {
-                tbody.innerHTML = '<tr><td colspan="5">En attente de l\'identification utilisateur...</td></tr>';
-                return;
-            }
-
-            const userBookings = allEmprunts.filter(emp => emp.Utilisateur === currentUserEmail);
-
-            if (userBookings.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5">Aucune réservation trouvée pour votre compte.</td></tr>';
-                return;
-            }
-
-            userBookings.forEach(emp => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${emp.id}</td>
-                    <td>Carte ${emp.Carte}</td>
-                    <td>${emp.DateDebut}</td>
-                    <td>${emp.DateFin}</td>
-                    <td><button class="btn-danger" type="button" onclick="deleteBooking(${emp.id})">Annuler</button></td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        document.getElementById('reservation-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const msgEl = document.getElementById('form-msg');
-            
-            if (!currentUserEmail) {
-                msgEl.style.color = 'red';
-                msgEl.innerText = "Erreur : Votre email utilisateur n'est pas reconnu.";
-                return;
-            }
-
-            const carte = parseInt(document.getElementById('carte').value);
-            const dateDebut = document.getElementById('date-debut').value;
-            const dateFin = document.getElementById('date-fin').value;
-
-            if (dateDebut > dateFin) {
-                msgEl.style.color = 'red';
-                msgEl.innerText = "La date de début doit être antérieure à la date de fin.";
-                return;
-            }
-
-            const conflict = allEmprunts.some(emp => {
-                return Number(emp.Carte) === carte && datesOverlap(dateDebut, dateFin, emp.DateDebut, emp.DateFin);
-            });
-
-            if (conflict) {
-                msgEl.style.color = 'red';
-                msgEl.innerText = `❌ La Carte ${carte} est déjà réservée sur cette période !`;
-                return;
-            }
-
-            try {
-                await grist.selectedTable.create([{
-                    Carte: carte,
-                    Utilisateur: currentUserEmail,
-                    DateDebut: dateDebut,
-                    DateFin: dateFin
-                }]);
-
-                msgEl.style.color = 'green';
-                msgEl.innerText = "✅ Réservation confirmée avec succès !";
-                document.getElementById('reservation-form').reset();
-            } catch (err) {
-                msgEl.style.color = 'red';
-                msgEl.innerText = "Erreur lors de l'enregistrement : " + err.message;
-            }
-        });
-
-        window.deleteBooking = async function(id) {
-            if (confirm("Voulez-vous vraiment annuler cette réservation ?")) {
-                try {
-                    await grist.selectedTable.destroy([id]);
-                } catch (err) {
-                    alert("Erreur lors de la suppression : " + err.message);
-                }
-            }
-        }
-    </script>
-</body>
-</html>
+        // Récup
