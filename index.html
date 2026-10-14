@@ -60,7 +60,7 @@
     <div class="section">
         <h3>Disponibilité actuelle (Aujourd'hui)</h3>
         <div class="card-status" id="cards-status-container">
-            Initialisation en cours...
+            Chargement...
         </div>
     </div>
 
@@ -96,7 +96,7 @@
                 </tr>
             </thead>
             <tbody id="my-bookings">
-                <tr><td colspan="5">Chargement des données...</td></tr>
+                <tr><td colspan="5">Chargement...</td></tr>
             </tbody>
         </table>
     </div>
@@ -105,15 +105,33 @@
         let allEmprunts = [];
         let currentUserEmail = "";
 
-        // Initialisation Grist sécurisée
         grist.ready({
-            requiredAccess: 'full'
+            requiredAccess: 'full',
+            requiredTableAccess: ['EMPRUNT', 'UTILISATEURS']
         });
 
-        grist.onRecords(function(records) {
-            allEmprunts = records || [];
-            updateUI();
-        });
+        async function loadData() {
+            try {
+                // Récupération directe de la table EMPRUNT sans passer par une vue
+                const records = await grist.docApi.fetchTable('EMPRUNT');
+                // Transformation du format de table Grist en tableau d'objets simple
+                allEmprunts = [];
+                if (records && records.id) {
+                    for (let i = 0; i < records.id.length; i++) {
+                        allEmprunts.push({
+                            id: records.id[i],
+                            Carte: records.Carte ? records.Carte[i] : null,
+                            Utilisateur: records.Utilisateur ? records.Utilisateur[i] : null,
+                            DateDebut: records.DateDebut ? records.DateDebut[i] : null,
+                            DateFin: records.DateFin ? records.DateFin[i] : null
+                        });
+                    }
+                }
+                updateUI();
+            } catch (err) {
+                console.error("Erreur de chargement de la table :", err);
+            }
+        }
 
         grist.onUser(function(user) {
             if (user && user.email) {
@@ -121,6 +139,14 @@
                 updateUI();
             }
         });
+
+        // Recharger les données quand Grist notifie un changement
+        grist.onRecords(function() {
+            loadData();
+        });
+
+        // Chargement initial
+        loadData();
 
         function updateUI() {
             renderStatus();
@@ -153,11 +179,10 @@
             tbody.innerHTML = '';
 
             if (!currentUserEmail) {
-                tbody.innerHTML = '<tr><td colspan="5">En attente de l\'identification utilisateur Grist...</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5">En attente de l\'identification utilisateur...</td></tr>';
                 return;
             }
 
-            // Utilisation de la colonne au singulier : Utilisateur
             const userBookings = allEmprunts.filter(emp => emp.Utilisateur === currentUserEmail);
 
             if (userBookings.length === 0) {
@@ -184,7 +209,7 @@
             
             if (!currentUserEmail) {
                 msgEl.style.color = 'red';
-                msgEl.innerText = "Erreur : Votre email utilisateur n'est pas encore reconnu par Grist.";
+                msgEl.innerText = "Erreur : Votre email utilisateur n'est pas reconnu.";
                 return;
             }
 
@@ -209,7 +234,6 @@
             }
 
             try {
-                // Enregistrement avec la colonne au singulier : Utilisateur
                 await grist.selectedTable.create([{
                     Carte: carte,
                     Utilisateur: currentUserEmail,
@@ -220,6 +244,7 @@
                 msgEl.style.color = 'green';
                 msgEl.innerText = "✅ Réservation confirmée avec succès !";
                 document.getElementById('reservation-form').reset();
+                loadData();
             } catch (err) {
                 msgEl.style.color = 'red';
                 msgEl.innerText = "Erreur lors de l'enregistrement : " + err.message;
@@ -230,6 +255,7 @@
             if (confirm("Voulez-vous vraiment annuler cette réservation ?")) {
                 try {
                     await grist.selectedTable.destroy([id]);
+                    loadData();
                 } catch (err) {
                     alert("Erreur lors de la suppression : " + err.message);
                 }
