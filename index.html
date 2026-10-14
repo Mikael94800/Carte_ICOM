@@ -109,23 +109,24 @@
         let allEmprunts = [];
         let currentUserEmail = "";
 
-        grist.ready({
-            requiredTableAccess: ['EMPRUNTS', 'UTILISATEURS']
-        });
+        // Déclaration des accès et écoute complète
+grist.ready({
+    requiredAccess: 'full'
+});
 
-        // Écoute des données de la table EMPRUNTS
-        grist.onRecords(function(records, mappings) {
-            allEmprunts = records;
-            updateUI();
-        });
+// Écoute des données de la table (connectée au widget)
+grist.onRecords(function(records) {
+    allEmprunts = records;
+    updateUI();
+});
 
-        // Récupération de l'utilisateur connecté via Grist
-        grist.onUser(function(user) {
-            if (user && user.email) {
-                currentUserEmail = user.email;
-                updateUI();
-            }
-        });
+// Récupération de l'utilisateur connecté via Grist
+grist.onUser(function(user) {
+    if (user && user.email) {
+        currentUserEmail = user.email;
+        updateUI();
+    }
+});
 
         function updateUI() {
             renderStatus();
