@@ -106,30 +106,27 @@
         let currentUserEmail = "";
 
         grist.ready({
-            requiredAccess: 'full',
-            requiredTableAccess: ['EMPRUNT', 'UTILISATEURS']
+            requiredAccess: 'full'
         });
 
-        async function loadData() {
+        async function fetchEmprunts() {
             try {
-                // Récupération directe de la table EMPRUNT sans passer par une vue
-                const records = await grist.docApi.fetchTable('EMPRUNT');
-                // Transformation du format de table Grist en tableau d'objets simple
+                const tableData = await grist.docApi.fetchTable('EMPRUNT');
                 allEmprunts = [];
-                if (records && records.id) {
-                    for (let i = 0; i < records.id.length; i++) {
+                if (tableData && tableData.id) {
+                    for (let i = 0; i < tableData.id.length; i++) {
                         allEmprunts.push({
-                            id: records.id[i],
-                            Carte: records.Carte ? records.Carte[i] : null,
-                            Utilisateur: records.Utilisateur ? records.Utilisateur[i] : null,
-                            DateDebut: records.DateDebut ? records.DateDebut[i] : null,
-                            DateFin: records.DateFin ? records.DateFin[i] : null
+                            id: tableData.id[i],
+                            Carte: tableData.Carte ? tableData.Carte[i] : null,
+                            Utilisateur: tableData.Utilisateur ? tableData.Utilisateur[i] : null,
+                            DateDebut: tableData.DateDebut ? tableData.DateDebut[i] : null,
+                            DateFin: tableData.DateFin ? tableData.DateFin[i] : null
                         });
                     }
                 }
                 updateUI();
             } catch (err) {
-                console.error("Erreur de chargement de la table :", err);
+                console.error("Erreur lors de la récupération de la table EMPRUNT :", err);
             }
         }
 
@@ -140,13 +137,13 @@
             }
         });
 
-        // Recharger les données quand Grist notifie un changement
+        // Actualisation automatique si les données de la table changent
         grist.onRecords(function() {
-            loadData();
+            fetchEmprunts();
         });
 
-        // Chargement initial
-        loadData();
+        // Chargement initial au démarrage
+        fetchEmprunts();
 
         function updateUI() {
             renderStatus();
@@ -244,7 +241,7 @@
                 msgEl.style.color = 'green';
                 msgEl.innerText = "✅ Réservation confirmée avec succès !";
                 document.getElementById('reservation-form').reset();
-                loadData();
+                fetchEmprunts();
             } catch (err) {
                 msgEl.style.color = 'red';
                 msgEl.innerText = "Erreur lors de l'enregistrement : " + err.message;
@@ -255,7 +252,7 @@
             if (confirm("Voulez-vous vraiment annuler cette réservation ?")) {
                 try {
                     await grist.selectedTable.destroy([id]);
-                    loadData();
+                    fetchEmprunts();
                 } catch (err) {
                     alert("Erreur lors de la suppression : " + err.message);
                 }
