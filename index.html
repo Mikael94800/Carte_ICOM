@@ -204,4 +204,37 @@
 
             if (conflict) {
                 msgEl.style.color = 'red';
-                msgEl.innerText =
+                msgEl.innerText = `❌ La Carte ${carte} est déjà réservée sur cette période !`;
+                return;
+            }
+
+            try {
+                // Enregistrement avec la colonne au singulier : Utilisateur
+                await grist.selectedTable.create([{
+                    Carte: carte,
+                    Utilisateur: currentUserEmail,
+                    DateDebut: dateDebut,
+                    DateFin: dateFin
+                }]);
+
+                msgEl.style.color = 'green';
+                msgEl.innerText = "✅ Réservation confirmée avec succès !";
+                document.getElementById('reservation-form').reset();
+            } catch (err) {
+                msgEl.style.color = 'red';
+                msgEl.innerText = "Erreur lors de l'enregistrement : " + err.message;
+            }
+        });
+
+        window.deleteBooking = async function(id) {
+            if (confirm("Voulez-vous vraiment annuler cette réservation ?")) {
+                try {
+                    await grist.selectedTable.destroy([id]);
+                } catch (err) {
+                    alert("Erreur lors de la suppression : " + err.message);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
