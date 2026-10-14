@@ -116,6 +116,11 @@
     <form id="reservation-form">
         <h3>Faire une demande d'emprunt</h3>
 
+        <label for="agent-select">Agent (Utilisateur) :</label>
+        <select id="agent-select" required>
+            <option value="">-- Sélectionnez votre nom --</option>
+        </select>
+
         <label for="carte">Carte :</label>
         <select id="carte" required>
             <option value="1">Carte 1</option>
@@ -135,7 +140,7 @@
 
     <!-- Mes réservations -->
     <div class="section">
-        <h3>Mes réservations en cours</h3>
+        <h3>Réservations de l'agent sélectionné</h3>
         <table>
             <thead>
                 <tr>
@@ -147,14 +152,15 @@
                 </tr>
             </thead>
             <tbody id="my-bookings">
-                <tr><td colspan="5">Chargement...</td></tr>
+                <tr><td colspan="5">Veuillez sélectionner un agent ci-dessus.</td></tr>
             </tbody>
         </table>
     </div>
 
     <script>
         let allEmprunts = [];
-        let currentUserEmail = "";
+        let allUsers = [];
+        let selectedAgent = "";
         let currentCalendarDate = new Date();
 
         grist.ready({
@@ -162,4 +168,52 @@
             requiredTableAccess: ['EMPRUNT', 'UTILISATEURS']
         });
 
-        // Récup
+        // Récupération des emprunts depuis la vue liée
+        grist.onRecords(function(records) {
+            allEmprunts = records || [];
+            updateUI();
+        });
+
+        // Chargement de la liste des agents depuis la table UTILISATEURS
+        async function loadUsers() {
+            try {
+                const usersTable = await grist.docApi.fetchTable('UTILISATEURS');
+                allUsers = [];
+                if (usersTable && usersTable.Email) {
+                    for (let i = 0; i < usersTable.Email.length; i++) {
+                        if (usersTable.Email[i]) {
+                            allUsers.push(usersTable.Email[i]);
+                        }
+                    }
+                }
+                populateAgentSelect();
+            } catch (err) {
+                console.error("Erreur chargement table UTILISATEURS :", err);
+            }
+        }
+
+        loadUsers();
+
+        function populateAgentSelect() {
+            const select = document.getElementById('agent-select');
+            select.innerHTML = '<option value="">-- Sélectionnez votre nom --</option>';
+            allUsers.forEach(email => {
+                const opt = document.createElement('option');
+                opt.value = email;
+                opt.textContent = email;
+                select.appendChild(opt);
+            });
+        }
+
+        document.getElementById('agent-select').addEventListener('change', function(e) {
+            selectedAgent = e.target.value;
+            renderMyBookings();
+        });
+
+        function updateUI() {
+            renderCalendar();
+            renderMyBookings();
+        }
+
+        window.changeMonth = function(direction) {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth
