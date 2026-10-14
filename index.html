@@ -60,7 +60,7 @@
     <div class="section">
         <h3>Disponibilité actuelle (Aujourd'hui)</h3>
         <div class="card-status" id="cards-status-container">
-            Chargement...
+            Chargement des statuts...
         </div>
     </div>
 
@@ -109,26 +109,11 @@
             requiredAccess: 'full'
         });
 
-        async function fetchEmprunts() {
-            try {
-                const tableData = await grist.docApi.fetchTable('EMPRUNT');
-                allEmprunts = [];
-                if (tableData && tableData.id) {
-                    for (let i = 0; i < tableData.id.length; i++) {
-                        allEmprunts.push({
-                            id: tableData.id[i],
-                            Carte: tableData.Carte ? tableData.Carte[i] : null,
-                            Utilisateur: tableData.Utilisateur ? tableData.Utilisateur[i] : null,
-                            DateDebut: tableData.DateDebut ? tableData.DateDebut[i] : null,
-                            DateFin: tableData.DateFin ? tableData.DateFin[i] : null
-                        });
-                    }
-                }
-                updateUI();
-            } catch (err) {
-                console.error("Erreur lors de la récupération de la table EMPRUNT :", err);
-            }
-        }
+        // Récupération automatique des enregistrements de la table liée à la page
+        grist.onRecords(function(records) {
+            allEmprunts = records || [];
+            updateUI();
+        });
 
         grist.onUser(function(user) {
             if (user && user.email) {
@@ -136,14 +121,6 @@
                 updateUI();
             }
         });
-
-        // Actualisation automatique si les données de la table changent
-        grist.onRecords(function() {
-            fetchEmprunts();
-        });
-
-        // Chargement initial au démarrage
-        fetchEmprunts();
 
         function updateUI() {
             renderStatus();
@@ -241,7 +218,6 @@
                 msgEl.style.color = 'green';
                 msgEl.innerText = "✅ Réservation confirmée avec succès !";
                 document.getElementById('reservation-form').reset();
-                fetchEmprunts();
             } catch (err) {
                 msgEl.style.color = 'red';
                 msgEl.innerText = "Erreur lors de l'enregistrement : " + err.message;
@@ -252,7 +228,6 @@
             if (confirm("Voulez-vous vraiment annuler cette réservation ?")) {
                 try {
                     await grist.selectedTable.destroy([id]);
-                    fetchEmprunts();
                 } catch (err) {
                     alert("Erreur lors de la suppression : " + err.message);
                 }
