@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>Gestion des Cartes Professionnelles</title>
-    <!-- Chargement de la bibliothèque Grist Widget API -->
     <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
     <style>
         body {
@@ -58,15 +57,13 @@
 
     <h2>Gestion des Emprunts de Cartes</h2>
 
-    <!-- Section Disponibilité en temps réel -->
     <div class="section">
         <h3>Disponibilité actuelle (Aujourd'hui)</h3>
         <div class="card-status" id="cards-status-container">
-            Chargement des statuts...
+            Initialisation en cours...
         </div>
     </div>
 
-    <!-- Formulaire de réservation -->
     <form id="reservation-form">
         <h3>Faire une demande d'emprunt</h3>
         <label for="carte">Carte :</label>
@@ -86,7 +83,6 @@
         <p id="form-msg" style="margin-top: 10px; font-weight: bold;"></p>
     </form>
 
-    <!-- Mes réservations -->
     <div class="section">
         <h3>Mes réservations en cours</h3>
         <table>
@@ -100,7 +96,7 @@
                 </tr>
             </thead>
             <tbody id="my-bookings">
-                <tr><td colspan="5">Chargement...</td></tr>
+                <tr><td colspan="5">Chargement des données...</td></tr>
             </tbody>
         </table>
     </div>
@@ -109,45 +105,40 @@
         let allEmprunts = [];
         let currentUserEmail = "";
 
-        // Déclaration des accès et écoute complète
-grist.ready({
-    requiredAccess: 'full'
-});
+        // Initialisation Grist sécurisée
+        grist.ready({
+            requiredAccess: 'full'
+        });
 
-// Écoute des données de la table (connectée au widget)
-grist.onRecords(function(records) {
-    allEmprunts = records;
-    updateUI();
-});
+        grist.onRecords(function(records) {
+            allEmprunts = records || [];
+            updateUI();
+        });
 
-// Récupération de l'utilisateur connecté via Grist
-grist.onUser(function(user) {
-    if (user && user.email) {
-        currentUserEmail = user.email;
-        updateUI();
-    }
-});
+        grist.onUser(function(user) {
+            if (user && user.email) {
+                currentUserEmail = user.email;
+                updateUI();
+            }
+        });
 
         function updateUI() {
             renderStatus();
             renderMyBookings();
         }
 
-        // Vérifie si une période chevauche une autre
         function datesOverlap(start1, end1, start2, end2) {
             return start1 <= end2 && end1 >= start2;
         }
 
-        // Affichage des statuts du jour
         function renderStatus() {
             const container = document.getElementById('cards-status-container');
             container.innerHTML = '';
             const today = new Date().toISOString().split('T')[0];
 
             for (let i = 1; i <= 3; i++) {
-                // Vérifier si la carte i est empruntée aujourd'hui
                 const isBusy = allEmprunts.some(emp => {
-                    return emp.Carte == i && emp.DateDebut <= today && emp.DateFin >= today;
+                    return String(emp.Carte) === String(i) && emp.DateDebut <= today && emp.DateFin >= today;
                 });
 
                 const badge = document.createElement('div');
@@ -157,16 +148,20 @@ grist.onUser(function(user) {
             }
         }
 
-        // Affichage des réservations de l'utilisateur connectée
         function renderMyBookings() {
             const tbody = document.getElementById('my-bookings');
             tbody.innerHTML = '';
 
-            // Filtrer par l'email de l'utilisateur connecté
+            if (!currentUserEmail) {
+                tbody.innerHTML = '<tr><td colspan="5">En attente de l\'identification utilisateur Grist...</td></tr>';
+                return;
+            }
+
+            // Utilisation de la colonne au singulier : Utilisateur
             const userBookings = allEmprunts.filter(emp => emp.Utilisateur === currentUserEmail);
 
             if (userBookings.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5">Aucune réservation trouvée.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5">Aucune réservation trouvée pour votre compte.</td></tr>';
                 return;
             }
 
@@ -177,20 +172,19 @@ grist.onUser(function(user) {
                     <td>Carte ${emp.Carte}</td>
                     <td>${emp.DateDebut}</td>
                     <td>${emp.DateFin}</td>
-                    <td><button class="btn-danger" onclick="deleteBooking(${emp.id})">Annuler</button></td>
+                    <td><button class="btn-danger" type="button" onclick="deleteBooking(${emp.id})">Annuler</button></td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        // Soumission du formulaire de réservation
         document.getElementById('reservation-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const msgEl = document.getElementById('form-msg');
             
             if (!currentUserEmail) {
                 msgEl.style.color = 'red';
-                msgEl.innerText = "Erreur : Impossible d'identifier votre email utilisateur.";
+                msgEl.innerText = "Erreur : Votre email utilisateur n'est pas encore reconnu par Grist.";
                 return;
             }
 
@@ -204,45 +198,10 @@ grist.onUser(function(user) {
                 return;
             }
 
-            // Vérification des conflits
             const conflict = allEmprunts.some(emp => {
-                return emp.Carte === carte && datesOverlap(dateDebut, dateFin, emp.DateDebut, emp.DateFin);
+                return Number(emp.Carte) === carte && datesOverlap(dateDebut, dateFin, emp.DateDebut, emp.DateFin);
             });
 
             if (conflict) {
                 msgEl.style.color = 'red';
-                msgEl.innerText = `❌ La Carte ${carte} est déjà réservée sur cette période !`;
-                return;
-            }
-
-            // Enregistrement dans Grist
-            try {
-                await grist.selectedTable.create([{
-                    Carte: carte,
-                    Utilisateur: currentUserEmail,
-                    DateDebut: dateDebut,
-                    DateFin: dateFin
-                }]);
-
-                msgEl.style.color = 'green';
-                msgEl.innerText = "✅ Réservation confirmée avec succès !";
-                document.getElementById('reservation-form').reset();
-            } catch (err) {
-                msgEl.style.color = 'red';
-                msgEl.innerText = "Erreur lors de l'enregistrement : " + err.message;
-            }
-        });
-
-        // Fonction d'annulation/suppression
-        window.deleteBooking = async function(id) {
-            if (confirm("Voulez-vous vraiment annuler cette réservation ?")) {
-                try {
-                    await grist.selectedTable.destroy([id]);
-                } catch (err) {
-                    alert("Erreur lors de la suppression : " + err.message);
-                }
-            }
-        }
-    </script>
-</body>
-</html>
+                msgEl.innerText =
