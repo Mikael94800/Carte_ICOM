@@ -75,7 +75,7 @@
   const TABLE = 'EmpruntsCartes';
   const IDENTITY_TABLE = 'Taskflow_Identite';
   const TEAM_TABLE = 'Team';
-  const CARD_KEYS = ['Carte1','Carte2','Carte3'];
+  const CARD_KEYS = ['Carte1_2','Carte2','Carte3'];
   const CARD_LABELS = ['Carte 1','Carte 2','Carte 3'];
   let bookings = [], currentUser = null, editingId = null, monthCursor = new Date();
   let isReady = false;
@@ -217,7 +217,7 @@
       await refreshData();
       if(!updateAvailability()) {setNotice('La disponibilité a changé. Vérifie les dates et réessaie.','error');return;}
       const start=$('startDate').value,end=$('endDate').value,cards=selectedCards();
-      const record={DateDebut:inputDateToGrist(start),DateFin:inputDateToGrist(end),Carte1:cards.includes('Carte1')?1:0,Carte2:cards.includes('Carte2')?1:0,Carte3:cards.includes('Carte3')?1:0,AgentEmail:currentUser.email,AgentNom:currentUser.name||currentUser.email,Commentaire:$('comment').value.trim(),Statut:'Confirmée'};
+      const record={DateDebut:inputDateToGrist(start),DateFin:inputDateToGrist(end),Carte1_2:cards.includes('Carte1_2')?1:0,Carte2:cards.includes('Carte2')?1:0,Carte3:cards.includes('Carte3')?1:0,AgentEmail:currentUser.email,AgentNom:currentUser.name||currentUser.email,Commentaire:$('comment').value.trim(),Statut:'Confirmée'};
       // Pré-vérifier le schéma réellement exposé par Grist avant toute écriture.
       stage='vérification de la table';
       const schema=await grist.docApi.fetchTable(TABLE);
@@ -249,20 +249,57 @@
       await refreshData();setNotice('Réservation annulée.','success');
     } catch(e) {console.error(e);setNotice('Annulation impossible : '+(e?.message||String(e)),'error');}
   }
+  function decodeTokenPayload(token) {
+    try {
+      const parts=String(token||'').split('.');
+      if(parts.length!==3) return null;
+      let b64=parts[1].replace(/-/g,'+').replace(/_/g,'/');
+      while(b64.length%4) b64+='=';
+      return JSON.parse(atob(b64));
+    } catch(e) { return null; }
+  }
+  function findClaim(obj, keys, depth=0) {
+    if(!obj || typeof obj!=='object' || depth>4) return '';
+    for(const key of keys) if(typeof obj[key]==='string' && obj[key].trim()) return obj[key].trim();
+    for(const value of Object.values(obj)) {
+      if(value && typeof value==='object') { const found=findClaim(value,keys,depth+1); if(found) return found; }
+    }
+    return '';
+  }
   async function loadIdentity() {
+    // Le pont Taskflow_Identite n'est fiable que si Grist ne rend visible que la ligne du compte courant.
+    // On vérifie donc d'abord l'identité du compte via les revendications du jeton Grist, si disponibles.
+    let tokenEmail='', tokenName='';
+    try {
+      if(typeof grist.getAccessToken==='function') {
+        const token=await grist.getAccessToken();
+        const claims=decodeTokenPayload(token);
+        if(claims) {
+          tokenEmail=normalizeEmail(findClaim(claims,['email','emailAddress','userEmail','preferred_username']));
+          tokenName=findClaim(claims,['name','displayName','full_name']);
+        }
+      }
+    } catch(e) { console.warn('[Cartes professionnelles] Identité du jeton non disponible.',e); }
+
     const raw=await grist.docApi.fetchTable(IDENTITY_TABLE), rows=rowsFromGrist(raw);
-    if(rows.length!==1) throw new Error(rows.length===0?'Aucune ligne d’identité visible. Vérifie la règle d’accès de Taskflow_Identite.':'Plusieurs lignes d’identité sont visibles. La configuration doit en exposer une seule.');
-    const bridge=rows[0], email=normalizeEmail(bridge.Email);
-    if(!email) throw new Error('La colonne Email de Taskflow_Identite est vide.');
-    let name=email;
+    if(rows.length!==1) throw new Error(rows.length===0?'Aucune ligne d’identité visible dans Taskflow_Identite. Vérifie la règle individuelle user.Email == rec.Email.':'Plusieurs lignes d’identité sont visibles dans Taskflow_Identite ; une seule doit l’être pour le compte connecté.');
+    const bridge=rows[0], bridgeEmail=normalizeEmail(bridge.Email);
+    if(!bridgeEmail) throw new Error('La colonne Email de Taskflow_Identite est vide.');
+    // Ne jamais attribuer une réservation à l'email du pont si le jeton identifie un autre compte.
+    if(tokenEmail && tokenEmail!==bridgeEmail) throw new Error(`Identité incohérente : le compte Grist semble être « ${tokenEmail} », mais Taskflow_Identite renvoie « ${bridgeEmail} ». Aucune réservation ne sera enregistrée. Corrige les permissions de cette table.`);
+    // Si le jeton ne fournit pas d'email exploitable, le pont seul ne permet pas de distinguer
+    // sûrement l'utilisateur courant d'une ligne visible par erreur : on échoue volontairement.
+    if(!tokenEmail) throw new Error('Grist ne fournit pas d’adresse électronique vérifiable dans le jeton accessible au widget. Pour éviter d’attribuer une réservation au mauvais agent, aucune identité n’a été validée. La table Taskflow_Identite doit être filtrée individuellement par user.Email == rec.Email.');
+
+    let name=tokenName||tokenEmail;
     try {
       const teamRows=rowsFromGrist(await grist.docApi.fetchTable(TEAM_TABLE));
       const teamId=refId(bridge.Team);
       const member=teamRows.find(r=>Number(r.id)===Number(teamId));
       if(member && member.nom) name=String(member.nom);
-    } catch(e) { console.warn('Nom non récupéré depuis Team; l’email sera affiché.',e); }
-    currentUser={email,name};
-    $('userBadge').textContent=`Connecté : ${name} (${email})`;
+    } catch(e) { console.warn('Nom non récupéré depuis Team; le nom du jeton sera affiché.',e); }
+    currentUser={email:tokenEmail,name};
+    $('userBadge').textContent=`Connecté : ${name} (${tokenEmail})`;
   }
   function wire() {
     $('bookingForm').addEventListener('submit',saveBooking);
