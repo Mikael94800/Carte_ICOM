@@ -1,70 +1,286 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-  <meta charset="utf-8">
-  <title>Carte Emprunts ICOM</title>
-
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
-  <!-- Style de la carte -->
-  <style>
-    #map {
-      width: 100%;
-      height: 500px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-    }
-    .popup-custom {
-      font-family: Arial, sans-serif;
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Réservation des cartes professionnelles</title>
+<script src="https://grist.numerique.gouv.fr/grist-plugin-api.js"></script>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#202938;background:#f5f7fb;--blue:#2878d0;--green:#27966b;--orange:#e58a25;--line:#dce3ec;--muted:#657386}
+*{box-sizing:border-box}body{margin:0;padding:18px;background:#f5f7fb}button,input,textarea{font:inherit}button{cursor:pointer;border:0;border-radius:8px;padding:9px 13px;font-weight:650;background:#e8edf4;color:#233044}button.primary{background:#205fa8;color:white}button.danger{background:#fff0ed;color:#a53225}button:disabled{opacity:.45;cursor:not-allowed}
+.app{max-width:1400px;margin:auto}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px}.title h1{font-size:24px;margin:0 0 4px}.subtitle{color:var(--muted);font-size:13px}.user{padding:8px 12px;background:white;border:1px solid var(--line);border-radius:10px;font-size:13px}
+.notice{padding:11px 13px;border-radius:9px;margin:10px 0;background:#eaf3ff;color:#174c82}.notice.error{background:#fff0ed;color:#9d2d20}.notice.success{background:#e8f8ef;color:#17613c}.hidden{display:none!important}
+.layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,1fr);gap:14px;align-items:start}.panel{background:#fff;border:1px solid var(--line);border-radius:13px;padding:15px;box-shadow:0 2px 8px #1e35500a}.panel h2{font-size:17px;margin:0 0 13px}.monthbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.monthbar strong{font-size:17px;text-transform:capitalize}.monthbar .nav{display:flex;gap:6px}.legend{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px;font-size:12px;color:#39465a}.legend span{display:inline-flex;align-items:center;gap:6px}.dot{width:10px;height:10px;border-radius:3px;display:inline-block}.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--line);border-left:1px solid var(--line)}.weekday{background:#f0f4f9;color:#536174;text-align:center;padding:8px 2px;font-size:11px;font-weight:750;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}.day{min-height:86px;padding:5px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:white;min-width:0}.day.out{background:#f7f9fc;color:#aab3bf}.day.today{box-shadow:inset 0 0 0 2px #4d8ed6}.daynum{font-size:12px;font-weight:750;margin-bottom:5px}.bars{display:grid;gap:3px}.bar{font-size:10px;line-height:1.25;padding:3px 4px;border-radius:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:white;min-width:0}.bar.c1{background:var(--blue)}.bar.c2{background:var(--green)}.bar.c3{background:var(--orange)}.dayfoot{font-size:10px;color:var(--muted);margin-top:4px}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:11px}.field{display:flex;flex-direction:column;gap:5px}.field.full{grid-column:1/-1}.field label{font-size:12px;font-weight:750;color:#455267}.field input,.field textarea{border:1px solid #cbd5e1;border-radius:8px;padding:9px;background:#fff;color:#202938;width:100%}.field textarea{resize:vertical;min-height:65px}.checks{display:flex;gap:8px;flex-wrap:wrap}.check{border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;gap:7px;align-items:center;font-size:13px;font-weight:650}.check input{accent-color:#205fa8}.formactions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}.availability{margin-top:12px;padding:10px;border-radius:8px;background:#f2f5f9;font-size:13px}.availability.ok{background:#e8f8ef;color:#17613c}.availability.bad{background:#fff0ed;color:#9d2d20}
+.requests{margin-top:14px}.request-list{display:grid;gap:8px}.request{border:1px solid var(--line);border-radius:9px;padding:10px;display:flex;justify-content:space-between;gap:10px;align-items:center}.reqmain{min-width:0}.reqtitle{font-size:13px;font-weight:750}.reqmeta{font-size:12px;color:var(--muted);margin-top:3px;overflow-wrap:anywhere}.reqcards{display:flex;gap:4px;margin-top:6px}.mini{font-size:10px;padding:2px 6px;border-radius:4px;color:white}.mini.c1{background:var(--blue)}.mini.c2{background:var(--green)}.mini.c3{background:var(--orange)}.reqbuttons{display:flex;gap:5px;flex-shrink:0}.reqbuttons button{padding:7px 9px;font-size:12px}.empty{color:var(--muted);font-size:13px;padding:12px 0}.smallprint{font-size:11px;color:var(--muted);margin-top:12px;line-height:1.45}
+@media(max-width:900px){body{padding:9px}.layout{grid-template-columns:1fr}.day{min-height:66px;padding:4px}.bar{font-size:9px;padding:2px}.title h1{font-size:21px}}
+</style>
 </head>
 <body>
-  <div id="map"></div>
-
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- Grist JS -->
-  <script src="https://unpkg.com/grist-static@latest/dist/grist.js"></script>
-
-  <script>
-    // Attend que Grist soit prêt
-    Grist.ready(() => {
-      // Récupère les données de la table EmpruntsCartes
-      Grist.fetchSelectedTable().then((emprunts) => {
-        initMap(emprunts);
-      });
-    });
-
-    function initMap(emprunts) {
-      // Centre par défaut (ajuste selon tes besoins)
-      const defaultCenter = [46.603354, 1.888334]; // Centre de la France
-      const map = L.map('map').setView(defaultCenter, 6);
-
-      // Ajoute la couche OpenStreetMap
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-      }).addTo(map);
-
-      // Ajoute les marqueurs
-      emprunts.forEach((emprunt) => {
-        // Vérifie que les coordonnées existent
-        if (emprunt.Latitude && emprunt.Longitude) {
-          const marker = L.marker([emprunt.Latitude, emprunt.Longitude]).addTo(map);
-
-          // Contenu du popup (adapte selon tes colonnes)
-          const popupContent = `
-            <div class="popup-custom">
-              <b>${emprunt.Emprunteur || 'Emprunteur inconnu'}</b><br>
-              Date d'emprunt: ${emprunt.DateEmprunt || 'N/A'}<br>
-              ${emprunt.Commentaire ? `Commentaire: ${emprunt.Commentaire}` : ''}
+<div class="app">
+  <header class="top">
+    <div class="title"><h1>Réservation des cartes professionnelles</h1><div class="subtitle">Calendrier partagé · 3 cartes non nominatives</div></div>
+    <div class="user" id="userBadge">Identification en cours…</div>
+  </header>
+  <div id="notice" class="notice">Connexion à Grist en cours…</div>
+  <div id="appContent" class="hidden">
+    <div class="layout">
+      <section class="panel">
+        <div class="monthbar">
+          <div class="nav"><button id="prevMonth" aria-label="Mois précédent">‹</button><button id="todayBtn">Aujourd’hui</button><button id="nextMonth" aria-label="Mois suivant">›</button></div>
+          <strong id="monthLabel"></strong>
+        </div>
+        <div class="legend">
+          <span><i class="dot" style="background:var(--blue)"></i>Carte 1</span>
+          <span><i class="dot" style="background:var(--green)"></i>Carte 2</span>
+          <span><i class="dot" style="background:var(--orange)"></i>Carte 3</span>
+        </div>
+        <div class="calendar" id="calendar"></div>
+        <div class="smallprint">Les jours de début et de fin sont inclus. Le calendrier affiche les réservations confirmées. Les noms affichés sont ceux renseignés dans les demandes.</div>
+      </section>
+      <section class="panel">
+        <h2 id="formTitle">Demander un emprunt</h2>
+        <form id="bookingForm">
+          <div class="formgrid">
+            <div class="field"><label for="startDate">Du</label><input type="date" id="startDate" required></div>
+            <div class="field"><label for="endDate">Au</label><input type="date" id="endDate" required></div>
+            <div class="field full"><label>Cartes souhaitées</label>
+              <div class="checks">
+                <label class="check"><input type="checkbox" id="card1"> <span style="color:var(--blue)">Carte 1</span></label>
+                <label class="check"><input type="checkbox" id="card2"> <span style="color:var(--green)">Carte 2</span></label>
+                <label class="check"><input type="checkbox" id="card3"> <span style="color:var(--orange)">Carte 3</span></label>
+              </div>
             </div>
-          `;
-          marker.bindPopup(popupContent);
-        }
-      });
+            <div class="field full"><label for="comment">Commentaire (facultatif)</label><textarea id="comment" placeholder="Précision sur l’emprunt…"></textarea></div>
+          </div>
+          <div id="availability" class="availability">Choisissez les dates et au moins une carte pour vérifier la disponibilité.</div>
+          <div class="formactions">
+            <button class="primary" type="submit" id="saveBtn">Confirmer la réservation</button>
+            <button type="button" id="cancelEditBtn" class="hidden">Quitter la modification</button>
+            <button type="button" id="resetBtn">Effacer le formulaire</button>
+          </div>
+        </form>
+      </section>
+    </div>
+    <section class="panel requests">
+      <h2>Demandes de réservation</h2>
+      <div class="request-list" id="requestList"></div>
+      <div class="smallprint">Tu peux modifier ou annuler uniquement tes propres demandes depuis ce widget. Cette restriction d’interface doit également être imposée par les règles d’accès Grist, décrites dans les consignes d’installation.</div>
+    </section>
+  </div>
+</div>
+<script>
+(() => {
+  'use strict';
+  const TABLE = 'EmpruntsCartes';
+  const IDENTITY_TABLE = 'Taskflow_Identite';
+  const TEAM_TABLE = 'Team';
+  const CARD_KEYS = ['Carte1','Carte2','Carte3'];
+  const CARD_LABELS = ['Carte 1','Carte 2','Carte 3'];
+  let bookings = [], currentUser = null, editingId = null, monthCursor = new Date();
+  let isReady = false;
+
+  const $ = id => document.getElementById(id);
+  const normalizeEmail = value => String(value || '').trim().toLowerCase();
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const dateKey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const parseInputDate = s => { if (!s) return null; const [y,m,d] = s.split('-').map(Number); return new Date(y,m-1,d,12,0,0,0); };
+  const gristDateToInput = value => {
+    if (value === null || value === undefined || value === '') return '';
+    const d = new Date(Number(value) * 1000);
+    if (!Number.isFinite(d.getTime())) return '';
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+  };
+  const inputDateToGrist = s => { const d = parseInputDate(s); return d ? Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/1000 : null; };
+  const formatDate = s => { const d = parseInputDate(s); return d ? d.toLocaleDateString('fr-FR') : '—'; };
+  const refId = v => Array.isArray(v) ? (v[0] === 'L' ? v[1] : null) : (Number.isFinite(Number(v)) && v !== '' ? Number(v) : null);
+
+  function rowsFromGrist(raw) {
+    if (!raw || !Array.isArray(raw.id)) return [];
+    return raw.id.map((id, i) => {
+      const row = {id};
+      for (const [key, values] of Object.entries(raw)) if (key !== 'id' && Array.isArray(values)) row[key] = values[i];
+      return row;
+    });
+  }
+  function setNotice(message, type='') {
+    const el = $('notice'); el.textContent = message; el.className = 'notice' + (type ? ' '+type : '');
+  }
+  function requireIdentity() {
+    if (!currentUser || !currentUser.email) throw new Error("L'identité de l'agent n'a pas pu être établie. Aucune réservation n'est autorisée.");
+  }
+  function selectedCards() {
+    return CARD_KEYS.map((key,i) => $( `card${i+1}`).checked ? key : null).filter(Boolean);
+  }
+  function isActive(row) { return String(row.Statut || 'Confirmée').toLowerCase() !== 'annulée' && String(row.Statut || 'Confirmée').toLowerCase() !== 'annulee'; }
+  function overlaps(aStart,aEnd,bStart,bEnd) { return aStart <= bEnd && bStart <= aEnd; }
+  function conflicts(start,end,cards,ignoreId=null) {
+    const conflictsFound = [];
+    for (const row of bookings) {
+      if (!isActive(row) || Number(row.id) === Number(ignoreId)) continue;
+      const rs = gristDateToInput(row.DateDebut), re = gristDateToInput(row.DateFin);
+      if (!rs || !re || !overlaps(start,end,rs,re)) continue;
+      for (const card of cards) if (row[card] === true || row[card] === 1) {
+        conflictsFound.push({card, row});
+      }
     }
-  </script>
+    return conflictsFound;
+  }
+  function updateAvailability() {
+    const start = $('startDate').value, end = $('endDate').value, cards = selectedCards(), box = $('availability');
+    box.className = 'availability';
+    if (!start || !end || !cards.length) { box.textContent='Choisissez les dates et au moins une carte pour vérifier la disponibilité.'; $('saveBtn').disabled=true; return false; }
+    if (end < start) { box.textContent='La date de fin doit être égale ou postérieure à la date de début.'; box.classList.add('bad'); $('saveBtn').disabled=true; return false; }
+    const found = conflicts(start,end,cards,editingId);
+    if (found.length) {
+      const names = [...new Set(found.map(x => `${CARD_LABELS[CARD_KEYS.indexOf(x.card)]} (${x.row.AgentNom || x.row.AgentEmail || 'agent non renseigné'})`))];
+      box.textContent = 'Indisponible sur cette période : ' + names.join(', ') + '. Choisissez d’autres dates ou cartes.';
+      box.classList.add('bad'); $('saveBtn').disabled=true; return false;
+    }
+    box.textContent='Disponible pour les dates et cartes sélectionnées. La disponibilité sera vérifiée une nouvelle fois avant l’enregistrement.';
+    box.classList.add('ok'); $('saveBtn').disabled=false; return true;
+  }
+  function renderCalendar() {
+    const root = $('calendar'); root.innerHTML = '';
+    const y=monthCursor.getFullYear(), m=monthCursor.getMonth();
+    $('monthLabel').textContent = new Date(y,m,1).toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+    ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].forEach(label => {
+      const el=document.createElement('div'); el.className='weekday'; el.textContent=label; root.appendChild(el);
+    });
+    const first=new Date(y,m,1), offset=(first.getDay()+6)%7, start=new Date(y,m,1-offset);
+    const today=dateKey(new Date());
+    for(let i=0;i<42;i++){
+      const day=new Date(start); day.setDate(start.getDate()+i);
+      const key=dateKey(day), cell=document.createElement('div');
+      cell.className='day'+(day.getMonth()!==m?' out':'')+(key===today?' today':'');
+      cell.innerHTML=`<div class="daynum">${day.getDate()}</div><div class="bars"></div>`;
+      const bars=cell.querySelector('.bars');
+      const active=bookings.filter(r=>{
+        if(!isActive(r)) return false;
+        const s=gristDateToInput(r.DateDebut),e=gristDateToInput(r.DateFin);
+        return s && e && s<=key && key<=e;
+      });
+      for(let ci=0;ci<3;ci++){
+        const keyName=CARD_KEYS[ci], matches=active.filter(r=>r[keyName]===true || r[keyName]===1);
+        for(const r of matches.slice(0,2)){
+          const b=document.createElement('div'); b.className=`bar c${ci+1}`;
+          b.title=`${CARD_LABELS[ci]} · ${r.AgentNom || r.AgentEmail || 'Agent'}${r.Commentaire?' · '+r.Commentaire:''}`;
+          b.textContent=`${ci+1} · ${r.AgentNom || r.AgentEmail || 'Réservée'}`;
+          bars.appendChild(b);
+        }
+      }
+      if(active.length) { const foot=document.createElement('div'); foot.className='dayfoot'; foot.textContent=`${active.length} demande${active.length>1?'s':''}`; cell.appendChild(foot); }
+      cell.addEventListener('click',()=>{ if(day.getMonth()===m){ $('startDate').value=key; if(!$('endDate').value || $('endDate').value<key) $('endDate').value=key; updateAvailability(); }});
+      root.appendChild(cell);
+    }
+  }
+  function renderRequests() {
+    const root=$('requestList'); root.innerHTML='';
+    const list=bookings.filter(isActive).sort((a,b)=>String(a.DateDebut).localeCompare(String(b.DateDebut)));
+    if(!list.length){root.innerHTML='<div class="empty">Aucune réservation confirmée.</div>';return;}
+    for(const row of list){
+      const mine=normalizeEmail(row.AgentEmail)===currentUser.email;
+      const start=gristDateToInput(row.DateDebut),end=gristDateToInput(row.DateFin);
+      const cards=CARD_KEYS.map((k,i)=>(row[k]===true||row[k]===1)?`<span class="mini c${i+1}">${CARD_LABELS[i]}</span>`:'').join('');
+      const el=document.createElement('div');el.className='request';
+      el.innerHTML=`<div class="reqmain"><div class="reqtitle">${esc(row.AgentNom||row.AgentEmail||'Agent')} · ${esc(formatDate(start))} → ${esc(formatDate(end))}</div><div class="reqmeta">${esc(row.Commentaire||'Aucun commentaire')}${mine?' · Votre demande':''}</div><div class="reqcards">${cards}</div></div><div class="reqbuttons">${mine?'<button type="button" data-edit="'+row.id+'">Modifier</button><button type="button" class="danger" data-cancel="'+row.id+'">Annuler</button>':''}</div>`;
+      root.appendChild(el);
+    }
+    root.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>startEdit(Number(b.dataset.edit))));
+    root.querySelectorAll('[data-cancel]').forEach(b=>b.addEventListener('click',()=>cancelBooking(Number(b.dataset.cancel))));
+  }
+  function resetForm() {
+    editingId=null; $('bookingForm').reset(); $('formTitle').textContent='Demander un emprunt'; $('saveBtn').textContent='Confirmer la réservation'; $('cancelEditBtn').classList.add('hidden'); updateAvailability();
+  }
+  function startEdit(id) {
+    const row=bookings.find(r=>Number(r.id)===id);
+    if(!row || normalizeEmail(row.AgentEmail)!==currentUser.email){setNotice('Tu ne peux modifier que tes propres demandes.','error');return;}
+    editingId=id;
+    $('startDate').value=gristDateToInput(row.DateDebut); $('endDate').value=gristDateToInput(row.DateFin);
+    CARD_KEYS.forEach((k,i)=>$(`card${i+1}`).checked=row[k]===true||row[k]===1);
+    $('comment').value=row.Commentaire||'';
+    $('formTitle').textContent='Modifier ma réservation'; $('saveBtn').textContent='Enregistrer les modifications'; $('cancelEditBtn').classList.remove('hidden');
+    updateAvailability(); $('startDate').scrollIntoView({behavior:'smooth',block:'center'});
+  }
+  async function refreshData() {
+    const raw=await grist.docApi.fetchTable(TABLE);
+    bookings=rowsFromGrist(raw);
+    renderCalendar();renderRequests();updateAvailability();
+  }
+  async function saveBooking(event) {
+    event.preventDefault();
+    try {
+      requireIdentity();
+      if(!updateAvailability()) return;
+      // Relecture juste avant l'écriture pour détecter les réservations ajoutées entre-temps.
+      await refreshData();
+      if(!updateAvailability()) {setNotice('La disponibilité a changé. Vérifie les dates et réessaie.','error');return;}
+      const start=$('startDate').value,end=$('endDate').value,cards=selectedCards();
+      const record={DateDebut:inputDateToGrist(start),DateFin:inputDateToGrist(end),Carte1:cards.includes('Carte1'),Carte2:cards.includes('Carte2'),Carte3:cards.includes('Carte3'),AgentEmail:currentUser.email,AgentNom:currentUser.name||currentUser.email,Commentaire:$('comment').value.trim(),Statut:'Confirmée'};
+      if(editingId!==null){
+        const existing=bookings.find(r=>Number(r.id)===Number(editingId));
+        if(!existing || normalizeEmail(existing.AgentEmail)!==currentUser.email) throw new Error('Cette demande ne vous appartient pas ou n’est plus accessible.');
+        await grist.docApi.applyUserActions([['UpdateRecord',TABLE,editingId,record]]);
+        setNotice('Réservation modifiée avec succès.','success');
+      } else {
+        await grist.docApi.applyUserActions([['AddRecord',TABLE,null,record]]);
+        setNotice('Réservation confirmée.','success');
+      }
+      resetForm(); await refreshData();
+    } catch(e) {console.error('[Cartes professionnelles] Enregistrement impossible',e);setNotice('Enregistrement impossible : '+(e?.message||String(e)),'error');}
+  }
+  async function cancelBooking(id) {
+    const row=bookings.find(r=>Number(r.id)===id);
+    if(!row || normalizeEmail(row.AgentEmail)!==currentUser.email){setNotice('Tu ne peux annuler que tes propres demandes.','error');return;}
+    if(!confirm(`Annuler la réservation du ${formatDate(gristDateToInput(row.DateDebut))} au ${formatDate(gristDateToInput(row.DateFin))} ?`)) return;
+    try {
+      await grist.docApi.applyUserActions([['UpdateRecord',TABLE,id,{Statut:'Annulée'}]]);
+      if(editingId===id) resetForm();
+      await refreshData();setNotice('Réservation annulée.','success');
+    } catch(e) {console.error(e);setNotice('Annulation impossible : '+(e?.message||String(e)),'error');}
+  }
+  async function loadIdentity() {
+    const raw=await grist.docApi.fetchTable(IDENTITY_TABLE), rows=rowsFromGrist(raw);
+    if(rows.length!==1) throw new Error(rows.length===0?'Aucune ligne d’identité visible. Vérifie la règle d’accès de Taskflow_Identite.':'Plusieurs lignes d’identité sont visibles. La configuration doit en exposer une seule.');
+    const bridge=rows[0], email=normalizeEmail(bridge.Email);
+    if(!email) throw new Error('La colonne Email de Taskflow_Identite est vide.');
+    let name=email;
+    try {
+      const teamRows=rowsFromGrist(await grist.docApi.fetchTable(TEAM_TABLE));
+      const teamId=refId(bridge.Team);
+      const member=teamRows.find(r=>Number(r.id)===Number(teamId));
+      if(member && member.nom) name=String(member.nom);
+    } catch(e) { console.warn('Nom non récupéré depuis Team; l’email sera affiché.',e); }
+    currentUser={email,name};
+    $('userBadge').textContent=`Connecté : ${name} (${email})`;
+  }
+  function wire() {
+    $('bookingForm').addEventListener('submit',saveBooking);
+    ['startDate','endDate','card1','card2','card3'].forEach(id=>$(id).addEventListener('change',updateAvailability));
+    $('prevMonth').addEventListener('click',()=>{monthCursor=new Date(monthCursor.getFullYear(),monthCursor.getMonth()-1,1);renderCalendar();});
+    $('nextMonth').addEventListener('click',()=>{monthCursor=new Date(monthCursor.getFullYear(),monthCursor.getMonth()+1,1);renderCalendar();});
+    $('todayBtn').addEventListener('click',()=>{monthCursor=new Date();renderCalendar();});
+    $('resetBtn').addEventListener('click',resetForm);
+    $('cancelEditBtn').addEventListener('click',resetForm);
+  }
+  async function init() {
+    try {
+      if(!window.grist) throw new Error('API Grist non chargée. Vérifie l’adresse du script grist-plugin-api.js.');
+      grist.ready({requiredAccess:'full'});
+      wire();
+      await loadIdentity();
+      await refreshData();
+      $('appContent').classList.remove('hidden');
+      $('notice').classList.add('hidden');
+      isReady=true;
+    } catch(e) {
+      console.error('[Cartes professionnelles] Initialisation impossible',e);
+      $('userBadge').textContent='Identité non vérifiée';
+      setNotice('Le widget n’a pas pu démarrer : '+(e?.message||String(e))+ ' Aucune réservation ne peut être créée tant que ce problème n’est pas résolu.','error');
+    }
+  }
+  init();
+})();
+</script>
 </body>
 </html>
