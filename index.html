@@ -249,37 +249,20 @@
       await refreshData();setNotice('Réservation annulée.','success');
     } catch(e) {console.error(e);setNotice('Annulation impossible : '+(e?.message||String(e)),'error');}
   }
-  // Identité calquée sur le pont du Kanban Taskflow : on ne dépend pas du jeton,
-  // car l’API Grist de cette instance ne fournit pas d’adresse exploitable dans celui-ci.
-  // La sécurité repose sur les permissions de la table Taskflow_Identite :
-  // chaque compte doit voir exactement sa propre ligne, filtrée par user.Email == rec.Email.
   async function loadIdentity() {
-    const raw = await grist.docApi.fetchTable(IDENTITY_TABLE);
-    const rows = rowsFromGrist(raw);
-    if (rows.length !== 1) {
-      throw new Error(rows.length === 0
-        ? 'Aucune ligne d’identité visible dans Taskflow_Identite. Vérifie la règle individuelle user.Email == rec.Email.'
-        : `Taskflow_Identite renvoie ${rows.length} lignes. Une seule ligne correspondant à l’agent connecté doit être visible ; vérifie les permissions avancées.`);
-    }
-
-    const bridge = rows[0];
-    const email = normalizeEmail(bridge.Email);
-    if (!email) throw new Error('La ligne visible dans Taskflow_Identite ne contient pas d’adresse dans la colonne Email.');
-
-    let name = email;
-    const teamId = refId(bridge.Team);
-    if (teamId !== null) {
-      try {
-        const teamRows = rowsFromGrist(await grist.docApi.fetchTable(TEAM_TABLE));
-        const member = teamRows.find(r => Number(r.id) === Number(teamId));
-        if (member && member.nom) name = String(member.nom);
-      } catch (e) {
-        console.warn('[Cartes professionnelles] Nom non récupéré depuis Team ; utilisation de l’adresse électronique.', e);
-      }
-    }
-
-    currentUser = { email, name };
-    $('userBadge').textContent = `Connecté : ${name} (${email})`;
+    const raw=await grist.docApi.fetchTable(IDENTITY_TABLE), rows=rowsFromGrist(raw);
+    if(rows.length!==1) throw new Error(rows.length===0?'Aucune ligne d’identité visible. Vérifie la règle d’accès de Taskflow_Identite.':'Plusieurs lignes d’identité sont visibles. La configuration doit en exposer une seule.');
+    const bridge=rows[0], email=normalizeEmail(bridge.Email);
+    if(!email) throw new Error('La colonne Email de Taskflow_Identite est vide.');
+    let name=email;
+    try {
+      const teamRows=rowsFromGrist(await grist.docApi.fetchTable(TEAM_TABLE));
+      const teamId=refId(bridge.Team);
+      const member=teamRows.find(r=>Number(r.id)===Number(teamId));
+      if(member && member.nom) name=String(member.nom);
+    } catch(e) { console.warn('Nom non récupéré depuis Team; l’email sera affiché.',e); }
+    currentUser={email,name};
+    $('userBadge').textContent=`Connecté : ${name} (${email})`;
   }
   function wire() {
     $('bookingForm').addEventListener('submit',saveBooking);
