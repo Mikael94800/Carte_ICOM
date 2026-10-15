@@ -209,6 +209,7 @@
   }
   async function saveBooking(event) {
     event.preventDefault();
+    let stage='préparation';
     try {
       requireIdentity();
       if(!updateAvailability()) return;
@@ -216,18 +217,27 @@
       await refreshData();
       if(!updateAvailability()) {setNotice('La disponibilité a changé. Vérifie les dates et réessaie.','error');return;}
       const start=$('startDate').value,end=$('endDate').value,cards=selectedCards();
-      const record={DateDebut:inputDateToGrist(start),DateFin:inputDateToGrist(end),Carte1:cards.includes('Carte1'),Carte2:cards.includes('Carte2'),Carte3:cards.includes('Carte3'),AgentEmail:currentUser.email,AgentNom:currentUser.name||currentUser.email,Commentaire:$('comment').value.trim(),Statut:'Confirmée'};
+      const record={DateDebut:inputDateToGrist(start),DateFin:inputDateToGrist(end),Carte1:cards.includes('Carte1')?1:0,Carte2:cards.includes('Carte2')?1:0,Carte3:cards.includes('Carte3')?1:0,AgentEmail:currentUser.email,AgentNom:currentUser.name||currentUser.email,Commentaire:$('comment').value.trim(),Statut:'Confirmée'};
+      // Pré-vérifier le schéma réellement exposé par Grist avant toute écriture.
+      stage='vérification de la table';
+      const schema=await grist.docApi.fetchTable(TABLE);
+      const availableColumns=Object.keys(schema||{}).filter(k=>k!=='id');
+      const missing=Object.keys(record).filter(k=>!Object.prototype.hasOwnProperty.call(schema||{},k));
+      if(missing.length) throw new Error(`La table « ${TABLE} » ne renvoie pas les colonnes attendues : ${missing.join(', ')}. Colonnes effectivement renvoyées par Grist : ${availableColumns.join(', ')||'(aucune)'}. Aucune écriture effectuée.`);
       if(editingId!==null){
+        stage='mise à jour de la réservation';
         const existing=bookings.find(r=>Number(r.id)===Number(editingId));
         if(!existing || normalizeEmail(existing.AgentEmail)!==currentUser.email) throw new Error('Cette demande ne vous appartient pas ou n’est plus accessible.');
         await grist.docApi.applyUserActions([['UpdateRecord',TABLE,editingId,record]]);
         setNotice('Réservation modifiée avec succès.','success');
       } else {
+        stage='création de la réservation';
         await grist.docApi.applyUserActions([['AddRecord',TABLE,null,record]]);
         setNotice('Réservation confirmée.','success');
       }
+      stage='rechargement du calendrier';
       resetForm(); await refreshData();
-    } catch(e) {console.error('[Cartes professionnelles] Enregistrement impossible',e);setNotice('Enregistrement impossible : '+(e?.message||String(e)),'error');}
+    } catch(e) {console.error('[Cartes professionnelles] Enregistrement impossible',e);setNotice('Enregistrement impossible ('+stage+') : '+(e?.message||String(e)),'error');}
   }
   async function cancelBooking(id) {
     const row=bookings.find(r=>Number(r.id)===id);
